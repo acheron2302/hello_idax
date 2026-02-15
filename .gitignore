@@ -43,3 +43,7 @@ Release/
 
 # CLion
 cmake-build-*/
+
+tools/bin/cmkr.exe
+
+tools/cmkr.exe
