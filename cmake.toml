@@ -1,0 +1,127 @@
+# cmkr configuration for hello_idax - Minimal IDA Pro Plugin Template using idax
+# 
+# Build Instructions:
+#   1. Set IDASDK environment variable to your IDA SDK root
+#   2. Generate build files: cmake -B build
+#   3. Build the plugin: cmake --build build
+
+[cmake]
+version = "3.27"
+cmkr-include = "cmkr.cmake"
+
+[project]
+name = "hello_idax"
+version = "1.0.0"
+description = "Minimal IDA Pro plugin template using idax"
+languages = ["CXX"]
+# Use dynamic runtime
+msvc-runtime = "dynamic"
+# Set up IDASDK path BEFORE project() - environment setup only
+cmake-before = """
+# Verify IDASDK environment variable
+if(NOT DEFINED ENV{IDASDK})
+    message(FATAL_ERROR "IDASDK environment variable is not set!")
+endif()
+
+set(IDASDK_PATH "$ENV{IDASDK}")
+file(TO_CMAKE_PATH "${IDASDK_PATH}" IDASDK_CMAKE_PATH)
+message(STATUS "Original IDASDK: ${IDASDK_CMAKE_PATH}")
+
+# Handle GitHub SDK structure (ida-cmake might be at parent level, SDK in src/)
+if(NOT EXISTS "${IDASDK_CMAKE_PATH}/ida-cmake/bootstrap.cmake")
+    get_filename_component(IDASDK_PARENT "${IDASDK_CMAKE_PATH}" DIRECTORY)
+    message(STATUS "Looking for ida-cmake in parent: ${IDASDK_PARENT}")
+    if(EXISTS "${IDASDK_PARENT}/ida-cmake/bootstrap.cmake")
+        set(IDASDK_CMAKE_PATH "${IDASDK_PARENT}")
+        message(STATUS "Found ida-cmake in parent, using: ${IDASDK_CMAKE_PATH}")
+    endif()
+endif()
+
+if(NOT EXISTS "${IDASDK_CMAKE_PATH}/ida-cmake/bootstrap.cmake")
+    message(FATAL_ERROR "ida-cmake not found at IDASDK='${IDASDK_PATH}' or '${IDASDK_CMAKE_PATH}'")
+endif()
+
+# For GitHub SDK structure, the actual SDK is in src/
+if(EXISTS "${IDASDK_CMAKE_PATH}/src/include/pro.h")
+    set(IDASDK_ACTUAL_PATH "${IDASDK_CMAKE_PATH}/src")
+    message(STATUS "Detected GitHub SDK structure, using src/ subdirectory")
+else()
+    set(IDASDK_ACTUAL_PATH "${IDASDK_CMAKE_PATH}")
+endif()
+
+# Update the environment variable for ida-cmake (needed for idax)
+set(ENV{IDASDK} "${IDASDK_ACTUAL_PATH}")
+message(STATUS "Set ENV{IDASDK} to: $ENV{IDASDK}")
+
+# Set idasdk_DIR so find_package can locate it
+set(idasdk_DIR "${IDASDK_CMAKE_PATH}/ida-cmake")
+message(STATUS "Set idasdk_DIR to: ${idasdk_DIR}")
+
+# Include idasdk first (this creates the targets)
+find_package(idasdk REQUIRED)
+"""
+
+# We need to include idasdk BEFORE fetching idax, since idax also calls find_package(idasdk)
+# and idasdkConfig.cmake doesn't have include guards (would create duplicate targets)
+# This runs AFTER project() so CMAKE_SYSTEM_NAME is properly set
+cmake-after = """
+
+
+# Fetch idax but DON'T use MakeAvailable to avoid its find_package(idasdk)
+include(FetchContent)
+if(POLICY CMP0135)
+    cmake_policy(SET CMP0135 NEW)
+endif()
+message(STATUS "Fetching idax...")
+FetchContent_Declare(idax
+    GIT_REPOSITORY "https://github.com/19h/idax.git"
+)
+FetchContent_Populate(idax)
+# Note: FetchContent_Populate is deprecated but we need it to avoid running idax's CMakeLists.txt
+# which calls find_package(idasdk) and causes duplicate target errors.
+# Once idasdkConfig.cmake has proper include guards, we can switch to FetchContent_MakeAvailable.
+
+# Manually create the idax target (idax has a simple structure)
+file(GLOB_RECURSE IDAX_SOURCES CONFIGURE_DEPENDS "${idax_SOURCE_DIR}/src/*.cpp")
+add_library(idax STATIC ${IDAX_SOURCES})
+add_library(idax::idax ALIAS idax)
+
+target_include_directories(idax
+    PUBLIC
+        ${idax_SOURCE_DIR}/include
+    PRIVATE
+        ${idax_SOURCE_DIR}/src
+)
+
+# idax needs SDK headers
+if(NOT TARGET idasdk_headers)
+    add_library(idasdk_headers INTERFACE IMPORTED)
+    target_include_directories(idasdk_headers INTERFACE ${IDASDK}/include)
+    target_compile_definitions(idasdk_headers INTERFACE __EA64__)
+    target_link_libraries(idasdk_headers INTERFACE
+        ida_platform_settings
+        ida_compiler_settings)
+endif()
+
+target_link_libraries(idax PUBLIC idasdk_headers)
+target_compile_features(idax PUBLIC cxx_std_23)
+"""
+
+# Plugin target - standard CMake shared library
+[target.hello]
+type = "shared"
+sources = ["src/**.cpp"]
+compile-features = ["cxx_std_23"]
+link-libraries = ["idasdk::plugin", "idax"]
+# Windows: SUBSYSTEM:WINDOWS
+windows.link-options = ["/SUBSYSTEM:WINDOWS"]
+cmake-after = """
+set_target_properties(hello PROPERTIES
+    CXX_STANDARD_REQUIRED ON
+    RUNTIME_OUTPUT_DIRECTORY "${IDABIN}/plugins"
+    LIBRARY_OUTPUT_DIRECTORY "${IDABIN}/plugins"
+)
+if(UNIX)
+    set_target_properties(hello PROPERTIES PREFIX "")
+endif()
+"""
