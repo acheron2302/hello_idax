@@ -72,8 +72,9 @@ endif()
 message(STATUS "Fetching idax...")
 FetchContent_Declare(idax
     GIT_REPOSITORY "https://github.com/19h/idax.git"
+    SOURCE_SUBDIR AVOID_calling_ADD_SUBDIR_in_subseqeuent_MAKEAVILABLE 
 )
-FetchContent_Populate(idax)
+FetchContent_MakeAvailable(idax)
 
 # Manually create the idax target (bypassing its CMakeLists.txt)
 file(GLOB_RECURSE IDAX_SOURCES CONFIGURE_DEPENDS "${idax_SOURCE_DIR}/src/*.cpp")
