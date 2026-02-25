@@ -62,20 +62,15 @@ message(STATUS "Set idasdk_DIR to: ${idasdk_DIR}")
 cmake-after = """
 # Include idasdk (platform is now detected properly)
 find_package(idasdk REQUIRED)
+"""
 
-# Fetch idax manually to avoid its find_package(idasdk) call
-include(FetchContent)
-if(POLICY CMP0135)
-    cmake_policy(SET CMP0135 NEW)
-endif()
+[fetch-content.idax]
+git = "https://github.com/19h/idax.git"
+subdir = "AVOID_calling_ADD_SUBDIR_in_subseqeuent_MAKEAVILABLE"
 
-message(STATUS "Fetching idax...")
-FetchContent_Declare(idax
-    GIT_REPOSITORY "https://github.com/19h/idax.git"
-    SOURCE_SUBDIR AVOID_calling_ADD_SUBDIR_in_subseqeuent_MAKEAVILABLE 
-)
-FetchContent_MakeAvailable(idax)
-
+# Plugin target - standard CMake shared library
+[target.hello]
+cmake-before = """
 # Manually create the idax target (bypassing its CMakeLists.txt)
 file(GLOB_RECURSE IDAX_SOURCES CONFIGURE_DEPENDS "${idax_SOURCE_DIR}/src/*.cpp")
 add_library(idax STATIC ${IDAX_SOURCES})
@@ -93,9 +88,6 @@ target_link_libraries(idax PUBLIC idasdk::plugin)
 target_compile_features(idax PUBLIC cxx_std_23)
 """
 
-
-# Plugin target - standard CMake shared library
-[target.hello]
 type = "shared"
 sources = ["src/**.cpp"]
 compile-features = ["cxx_std_23"]
