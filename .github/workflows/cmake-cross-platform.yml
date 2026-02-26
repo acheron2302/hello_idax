@@ -23,8 +23,8 @@ jobs:
             cpp_compiler: g++
             build_type: Release
           - os: ubuntu-latest
-            c_compiler: clang
-            cpp_compiler: clang++
+            c_compiler: clang-16
+            cpp_compiler: clang++-16
             build_type: Release
 
     steps:
@@ -61,7 +61,15 @@ jobs:
         # Create output directory for plugins (required by cmake.toml)
         mkdir -p ${{ github.workspace }}/build/output/plugins
         echo "IDABIN=${{ github.workspace }}/build/output" >> $GITHUB_ENV
-
+        
+    - name: Install Clang 16 
+      if: matrix.c_compiler == 'clang-16'
+      run: |
+        wget https://apt.llvm.org/llvm.sh
+        chmod +x llvm.sh
+        sudo ./llvm.sh 16
+        sudo apt-get install -y libc++-16-dev libc++abi-16-dev
+        
     - name: Configure CMake (cmkr bootstrap)
       shell: bash
       run: |
