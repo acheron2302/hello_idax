@@ -29,8 +29,8 @@ jobs:
             cxx_flags: "-std=c++23"
             
           - os: ubuntu-latest
-            c_compiler: clang-18
-            cpp_compiler: clang++-18
+            c_compiler: clang
+            cpp_compiler: clang++
             build_type: Release
             artifact_name: hello_idax-linux-clang
             cxx_flags: "-std=c++2b"
@@ -74,7 +74,7 @@ jobs:
       if: matrix.c_compiler == 'clang-18'
       run: |
         sudo apt-get update
-        sudo apt-get install -y clang-18 libc++-18-dev libc++abi-18-dev
+        sudo apt-get install -y cmake ninja-build gcc g++ clang
     
     - name: Configure CMake (cmkr bootstrap)
       shell: bash
@@ -96,7 +96,7 @@ jobs:
         IDABIN: ${{ github.workspace }}/build/output
 
     - name: Build Plugin
-      run: cmake --build build --config ${{ matrix.build_type }}
+      run: cmake --build build --config ${{ matrix.build_type }} --parallel
       env:
         IDASDK: ${{ github.workspace }}/idasdk
         IDABIN: ${{ github.workspace }}/build/output
