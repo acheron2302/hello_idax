@@ -1,0 +1,100 @@
+name: Build hello_idax Plugin
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            c_compiler: cl
+            cpp_compiler: cl
+            build_type: Release
+          - os: ubuntu-latest
+            c_compiler: gcc
+            cpp_compiler: g++
+            build_type: Release
+          - os: ubuntu-latest
+            c_compiler: clang
+            cpp_compiler: clang++
+            build_type: Release
+
+    steps:
+    - name: Checkout hello_idax
+      uses: actions/checkout@v4
+
+    - name: Checkout IDA SDK
+      uses: actions/checkout@v4
+      with:
+        repository: HexRaysSA/ida-sdk
+        path: idasdk
+
+    - name: Install ida-cmake
+      shell: bash
+      run: |
+        # Clone ida-cmake into the IDA SDK directory
+        git clone --depth 1 https://github.com/allthingsida/ida-cmake.git idasdk/ida-cmake
+        
+        # Verify installation
+        if [ ! -f "idasdk/ida-cmake/bootstrap.cmake" ]; then
+          echo "::error::ida-cmake bootstrap.cmake not found!"
+          exit 1
+        fi
+        
+        echo "ida-cmake installed successfully"
+        ls -la idasdk/ida-cmake/
+
+    - name: Setup Environment
+      shell: bash
+      run: |
+        # Set IDASDK environment variable (cmake.toml handles path resolution)
+        echo "IDASDK=${{ github.workspace }}/idasdk" >> $GITHUB_ENV
+        
+        # Create output directory for plugins (required by cmake.toml)
+        mkdir -p ${{ github.workspace }}/build/output/plugins
+        echo "IDABIN=${{ github.workspace }}/build/output" >> $GITHUB_ENV
+
+    - name: Configure CMake (cmkr bootstrap)
+      shell: bash
+      run: |
+        # cmkr is automatically bootstrapped when running cmake
+        cmake -B build \
+          -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
+          -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+          -S .
+      env:
+        IDASDK: ${{ github.workspace }}/idasdk
+        IDABIN: ${{ github.workspace }}/build/output
+
+    - name: Build Plugin
+      run: cmake --build build --config ${{ matrix.build_type }}
+      env:
+        IDASDK: ${{ github.workspace }}/idasdk
+        IDABIN: ${{ github.workspace }}/build/output
+
+    - name: Verify Build Outputs
+      shell: bash
+      run: |
+        echo "Looking for built plugin..."
+        find build -name "hello*" -type f 2>/dev/null || true
+        find build -name "*.dll" -o -name "*.so" -o -name "*.dylib" | head -20
+
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: hello_idax-${{ matrix.os }}-${{ matrix.c_compiler }}
+        path: |
+          build/**/*.dll
+          build/**/*.so
+          build/**/*.dylib
+          build/**/plugins/*
+        if-no-files-found: warn
