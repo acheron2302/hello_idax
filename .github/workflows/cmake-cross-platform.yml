@@ -27,13 +27,6 @@ jobs:
             build_type: Release
             artifact_name: hello_idax-linux-gcc
             cxx_flags: "-std=c++23"
-            
-          - os: ubuntu-latest
-            c_compiler: clang
-            cpp_compiler: clang++
-            build_type: Release
-            artifact_name: hello_idax-linux-clang
-            cxx_flags: "-std=c++2b"
 
     steps:
     - name: Checkout hello_idax
@@ -69,12 +62,6 @@ jobs:
         # Create output directory for plugins (required by cmake.toml)
         mkdir -p ${{ github.workspace }}/build/output/plugins
         echo "IDABIN=${{ github.workspace }}/build/output" >> $GITHUB_ENV
-        
-    - name: Install Clang 18
-      if: matrix.c_compiler == 'clang-18'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y cmake ninja-build gcc g++ clang
     
     - name: Configure CMake (cmkr bootstrap)
       shell: bash
