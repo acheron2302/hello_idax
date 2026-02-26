@@ -19,18 +19,21 @@ jobs:
             cpp_compiler: cl
             build_type: Release
             artifact_name: hello_idax-windows-msvc
+            cxx_flags: "/std:c++latest"
             
           - os: ubuntu-latest
             c_compiler: gcc
             cpp_compiler: g++
             build_type: Release
             artifact_name: hello_idax-linux-gcc
-
+            cxx_flags: "-std=c++23"
+            
           - os: ubuntu-latest
             c_compiler: clang-18
             cpp_compiler: clang++-18
             build_type: Release
             artifact_name: hello_idax-linux-clang
+            cxx_flags: "-std=c++2b"
 
     steps:
     - name: Checkout hello_idax
@@ -86,6 +89,7 @@ jobs:
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
           -DCMAKE_CXX_STANDARD=23 \
           -DCMAKE_CXX_STANDARD_REQUIRED=ON \
+          -DCMAKE_CXX_FLAGS="${{ matrix.cxx_flags }}" \
           -S .
       env:
         IDASDK: ${{ github.workspace }}/idasdk
