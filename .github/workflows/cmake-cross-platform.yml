@@ -23,9 +23,10 @@ jobs:
             cpp_compiler: g++
             build_type: Release
           - os: ubuntu-latest
-            c_compiler: clang-16
-            cpp_compiler: clang++-16
+            c_compiler: clang-18
+            cpp_compiler: clang++-18
             build_type: Release
+            artifact_name: hello_idax-linux-clang
 
     steps:
     - name: Checkout hello_idax
@@ -62,14 +63,12 @@ jobs:
         mkdir -p ${{ github.workspace }}/build/output/plugins
         echo "IDABIN=${{ github.workspace }}/build/output" >> $GITHUB_ENV
         
-    - name: Install Clang 16 
-      if: matrix.c_compiler == 'clang-16'
+    - name: Install Clang 18
+      if: matrix.c_compiler == 'clang-18'
       run: |
-        wget https://apt.llvm.org/llvm.sh
-        chmod +x llvm.sh
-        sudo ./llvm.sh 16
-        sudo apt-get install -y libc++-16-dev libc++abi-16-dev
-        
+        sudo apt-get update
+        sudo apt-get install -y clang-18 libc++-18-dev libc++abi-18-dev
+    
     - name: Configure CMake (cmkr bootstrap)
       shell: bash
       run: |
@@ -99,13 +98,24 @@ jobs:
         find build -name "hello*" -type f 2>/dev/null || true
         find build -name "*.dll" -o -name "*.so" -o -name "*.dylib" | head -20
 
-    - name: Upload Artifacts
+    # Rename artifacts with platform/compiler info for clarity
+    - name: Prepare Artifacts
+      shell: bash
+      run: |
+        mkdir -p artifacts
+        if [ "${{ matrix.os }}" = "windows-latest" ]; then
+          cp build/Release/hello.dll "artifacts/hello_idax-${{ matrix.artifact_name }}.dll" 2>/dev/null || \
+          cp build/hello.dll "artifacts/hello_idax-${{ matrix.artifact_name }}.dll" 2>/dev/null || \
+          find build -name "*.dll" -exec cp {} "artifacts/hello_idax-${{ matrix.artifact_name }}.dll" \;
+        else
+          cp build/hello.so "artifacts/hello_idax-${{ matrix.artifact_name }}.so" 2>/dev/null || \
+          find build -name "*.so" -exec cp {} "artifacts/hello_idax-${{ matrix.artifact_name }}.so" \;
+        fi
+        ls -la artifacts/
+        
+    - name: Upload Build Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: hello_idax-${{ matrix.os }}-${{ matrix.c_compiler }}
-        path: |
-          build/**/*.dll
-          build/**/*.so
-          build/**/*.dylib
-          build/**/plugins/*
-        if-no-files-found: warn
+        name: ${{ matrix.artifact_name }}
+        path: artifacts/*
+        if-no-files-found: error
