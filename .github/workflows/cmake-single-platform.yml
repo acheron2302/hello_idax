@@ -65,7 +65,10 @@ jobs:
     - name: Configure CMake (cmkr bootstrap)
       shell: bash
       run: |
-        # cmkr is automatically bootstrapped when running cmake
+        # Step 1: Generate CMakeLists.txt from cmake.toml using cmkr
+        cmake -P cmkr.cmake
+      
+        # Step 2: Now configure with CMake
         cmake -B build \
           -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
           -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
