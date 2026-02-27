@@ -33,7 +33,7 @@ jobs:
             cpp_compiler: clang++-21
             build_type: Release
             artifact_name: hello_idax-linux-clang
-            cxx_flags: "-std=c++2b"
+            cxx_flags: "-std=c++23"
 
     steps:
     - name: Checkout hello_idax
