@@ -28,13 +28,6 @@ jobs:
             artifact_name: hello_idax-linux-gcc
             cxx_flags: "-std=c++23"
 
-          - os: ubuntu-latest
-            c_compiler: clang-20
-            cpp_compiler: clang++-20
-            build_type: Release
-            artifact_name: hello_idax-linux-clang
-            cxx_flags: "-std=c++23"
-
     steps:
     - name: Checkout hello_idax
       uses: actions/checkout@v4
@@ -69,14 +62,6 @@ jobs:
         # Create output directory for plugins (required by cmake.toml)
         mkdir -p ${{ github.workspace }}/build/output/plugins
         echo "IDABIN=${{ github.workspace }}/build/output" >> $GITHUB_ENV
-
-    - name: Install Clang 20
-      if: matrix.c_compiler == 'clang-20'
-      run: |
-        wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-        echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-20 main" | sudo tee /etc/apt/sources.list.d/llvm.list
-        sudo apt -y update
-        sudo apt install -y clang-20
     
     - name: Configure CMake (cmkr bootstrap)
       shell: bash
